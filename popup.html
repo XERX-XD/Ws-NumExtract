@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WA Extractor</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;600&display=swap');
+    :root {
+      --bg: #0a0f0d; --surface: #111a15; --border: #1e3025;
+      --green: #25d366; --green-dim: #1a9447; --green-glow: rgba(37,211,102,0.18);
+      --text: #e8f5ec; --text-muted: #6b8f76; --red: #ff5c5c; --accent: #00ffa3;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { width: 340px; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; overflow: hidden; }
+
+    .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 18px 14px; display: flex; align-items: center; gap: 12px; }
+    .logo { width: 38px; height: 38px; background: var(--green); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 0 16px var(--green-glow); }
+    .logo svg { width: 22px; height: 22px; fill: #0a0f0d; }
+    .title-group { flex: 1; }
+    .title-group h1 { font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: var(--green); line-height: 1; margin-bottom: 3px; }
+    .title-group p { font-size: 11px; color: var(--text-muted); letter-spacing: 0.02em; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #3a3a3a; flex-shrink: 0; transition: background 0.3s; }
+    .status-dot.connected { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-dot.error { background: var(--red); }
+
+    .body { padding: 16px 18px; }
+    .mode-label { font-size: 10px; font-family: 'Space Mono', monospace; letter-spacing: 0.1em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; }
+    .mode-group { display: flex; gap: 8px; margin-bottom: 16px; }
+    .mode-btn { flex: 1; padding: 8px 0; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .mode-btn span.icon { font-size: 16px; }
+    .mode-btn span.label { font-size: 11px; }
+    .mode-btn.active { border-color: var(--green); background: var(--green-glow); color: var(--green); }
+    .mode-btn:hover:not(.active) { border-color: var(--green-dim); color: var(--text); }
+
+    .extract-btn { width: 100%; padding: 13px; border-radius: 10px; border: none; background: var(--green); color: #0a0f0d; font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.05em; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 20px rgba(37,211,102,0.25); }
+    .extract-btn:hover { background: #2ee876; box-shadow: 0 4px 28px rgba(37,211,102,0.4); }
+    .extract-btn:active { transform: scale(0.98); }
+    .extract-btn:disabled { background: var(--green-dim); opacity: 0.6; cursor: not-allowed; box-shadow: none; }
+
+    .progress-area { margin-top: 14px; display: none; }
+    .progress-area.show { display: block; }
+    .progress-bar-bg { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; margin-bottom: 8px; }
+    .progress-bar-fill { height: 100%; background: var(--green); border-radius: 2px; width: 40%; box-shadow: 0 0 8px var(--green); animation: shimmer 1.4s infinite; }
+    @keyframes shimmer { 0% { margin-left: -40%; } 100% { margin-left: 110%; } }
+    .progress-text { font-size: 11px; font-family: 'Space Mono', monospace; color: var(--text-muted); }
+    .progress-text span { color: var(--accent); }
+
+    .results-area { margin-top: 14px; display: none; }
+    .results-area.show { display: block; }
+    .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .results-count { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--text-muted); }
+    .results-count strong { color: var(--green); font-size: 15px; }
+    .results-list { max-height: 140px; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--text); line-height: 1.7; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+    .results-list .num { color: var(--accent); }
+
+    .save-group { display: flex; gap: 8px; margin-top: 10px; }
+    .save-btn { flex: 1; padding: 9px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 5px; }
+    .save-btn:hover { border-color: var(--green); color: var(--green); background: var(--green-glow); }
+
+    .error-box { margin-top: 12px; padding: 10px 12px; background: rgba(255,92,92,0.08); border: 1px solid rgba(255,92,92,0.3); border-radius: 8px; font-size: 11px; color: var(--red); display: none; line-height: 1.5; }
+    .error-box.show { display: block; }
+
+    .footer { border-top: 1px solid var(--border); padding: 10px 18px; font-size: 10px; color: var(--text-muted); font-family: 'Space Mono', monospace; letter-spacing: 0.04em; display: flex; justify-content: space-between; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+    </svg>
+  </div>
+  <div class="title-group">
+    <h1>WA EXTRACTOR</h1>
+    <p>Chat number harvester</p>
+  </div>
+  <div class="status-dot" id="statusDot" title="WhatsApp Web status"></div>
+</div>
+
+<div class="body">
+  <div class="mode-label">Extraction mode</div>
+  <div class="mode-group">
+    <!-- NO onclick= attributes — wired in popup.js -->
+    <button class="mode-btn active" id="modeQuick">
+      <span class="icon">⚡</span>
+      <span class="label">Quick</span>
+    </button>
+    <button class="mode-btn" id="modeDeep">
+      <span class="icon">🔍</span>
+      <span class="label">Deep Scroll</span>
+    </button>
+  </div>
+
+  <button class="extract-btn" id="extractBtn">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+    </svg>
+    EXTRACT NUMBERS
+  </button>
+
+  <div class="progress-area" id="progressArea">
+    <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
+    <div class="progress-text">Scanning chats… <span id="progressCount">0</span> found</div>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="results-area" id="resultsArea">
+    <div class="results-header">
+      <div class="results-count">Found <strong id="totalCount">0</strong> numbers</div>
+    </div>
+    <div class="results-list" id="resultsList"></div>
+    <div class="save-group">
+      <!-- IDs match popup.js references -->
+      <button class="save-btn" id="saveTxt">
+        ↓ .TXT
+      </button>
+      <button class="save-btn" id="saveCsv">
+        ↓ .CSV
+      </button>
+      <button class="save-btn" id="saveJson">
+        ↓ .JSON
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <span>v1.1.0</span>
+  <span>web.whatsapp.com only</span>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>
